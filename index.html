@@ -1,0 +1,184 @@
+
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Electrical Calculator | AR Group</title>
+<style>
+:root{--bg:#071b12;--panel:#102c20;--panel2:#1d4030;--green:#5df0ad;--white:#f5fff8;--muted:#b9d1c3;--gold:#ffd166}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--white);font-family:Arial,"Noto Sans Devanagari",sans-serif}
+header{padding:22px 16px;background:linear-gradient(135deg,#102e20,#07150e);text-align:center;border-bottom:1px solid #315541}
+.logo{width:76px;height:76px;border:3px solid white;border-radius:50%;background:#17243b;display:grid;place-items:center;margin:auto;font-size:25px;font-weight:bold;color:var(--gold)}
+h1{font-size:25px;margin:12px 0 4px;color:var(--green)}
+header p{margin:5px;color:var(--muted)}
+main{max-width:900px;margin:auto;padding:14px}
+h2{color:var(--green);font-size:23px}
+h3{margin-top:0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.card{background:var(--panel);border:1px solid #315541;border-radius:16px;padding:15px;min-height:105px;cursor:pointer}
+.card:active,button:active{transform:scale(.98)}
+.card b{display:block;font-size:16px;margin-bottom:7px;color:var(--green)}
+.card span{font-size:13px;color:var(--muted)}
+.panel{background:var(--panel);border:1px solid #315541;border-radius:17px;padding:17px;margin:12px 0}
+button{background:var(--green);color:#062317;border:0;border-radius:11px;padding:13px 10px;font-size:16px;font-weight:bold;cursor:pointer}
+button.secondary{background:var(--panel2);color:white;border:1px solid #50745d}
+button.danger{background:#9b3434;color:white}
+button:disabled{opacity:.5}
+input,select,textarea{width:100%;padding:13px;border-radius:10px;border:1px solid #a8c9b6;background:#f4fbf6;color:#10251a;font-size:17px;margin:6px 0 13px}
+label{display:block;color:var(--muted);margin-top:8px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.full{width:100%;margin:5px 0}
+.result{background:#07150e;border:1px solid #315541;padding:14px;border-radius:10px;margin:12px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.keypad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.keypad button{font-size:23px;padding:18px 3px;background:#254b37;color:white}
+.keypad button.op{background:var(--green);color:#062317}
+.display{background:#f4fbf6;color:#10251a;text-align:right;font-size:30px;min-height:65px;padding:17px;border-radius:10px;margin-bottom:12px;overflow-wrap:anywhere}
+canvas,img,video{max-width:100%;border-radius:10px}
+#routeCanvas{width:100%;height:auto;background:#f4fbf6;touch-action:manipulation}
+.small{font-size:13px;color:var(--muted)}
+.bill{background:white;color:#17221a;padding:18px;border-radius:4px}
+.bill h2{color:#167347}
+.bill table{width:100%;border-collapse:collapse}
+.bill td,.bill th{border:1px solid #bbb;padding:8px;text-align:left}
+.bill input{border:1px solid #ccc}
+.hidden{display:none}
+footer{text-align:center;color:var(--muted);padding:25px}
+@media(min-width:650px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media print{body{background:white;color:black}.no-print,header,main>.panel:first-child{display:none!important}#billOutput{display:block!important}.bill{display:block!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">E</div>
+  <h1>ELECTRICAL CALCULATOR</h1>
+  <p><b>AR GROUP OF INDUSTRIES</b></p>
+  <p>Electrical Tools • Estimation • Billing</p>
+</header>
+<main>
+<section id="home">
+  <div class="panel">
+    <h2>आपका Electrical Workbench</h2>
+    <p>अपना टूल चुनें। हर टूल अलग काम करता है।</p>
+    <div class="result">17 टूल • कैलकुलेशन • साइट माप • बिल और कोटेशन</div>
+  </div>
+  <div class="grid" id="toolGrid"></div>
+</section>
+<section id="work" class="hidden">
+  <button class="secondary no-print" onclick="goHome()">← सभी टूल</button>
+  <div id="toolArea"></div>
+</section>
+<footer>AR GROUP OF INDUSTRIES · Electrical CALCULATOR</footer>
+</main>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num=id=>{const n=Number($(id)?.value);return Number.isFinite(n)?n:0};
+const fmt=n=>Number.isFinite(n)?n.toLocaleString("en-IN",{maximumFractionDigits:3}):"—";
+const tools=[
+["1","फोन कैलकुलेटर","सामान्य जोड़, घटाव और गुणा","calc"],
+["2","मैथमेटिकल कैलकुलेटर","sin, cos, tan, √, log और power","math"],
+["3","Ohm's Law","Voltage, Current और Resistance","ohm"],
+["4","Power Calculator","P, V, I और R","power"],
+["5","Series / Parallel","रेज़िस्टेंस कैलकुलेशन","res"],
+["6","Material Estimate","सामान, मात्रा, रेट, लेबर और टैक्स","estimate"],
+["7","Bill & Quotation","ग्राहक का बिल प्रिंट करें","bill"],
+["8","Live Camera","कैमरा या फोटो चुनें","camera"],
+["9","Wire Helper","वायर की लंबाई और लागत","wire"],
+["10","Unit Converter","लंबाई, पावर और ऊर्जा","convert"],
+["11","Resistor Color Code","रंगों से resistance पढ़ें","color"],
+["12","Transformer Helper","Turns ratio और voltage","transformer"],
+["13","Energy Calculator","यूनिट और बिजली खर्च","energy"],
+["14","Electrical Formulas","मुख्य फॉर्मूले","formula"],
+["15","Safety Checklist","काम से पहले सुरक्षा जाँच","safety"],
+["16","Customer Notes","नोट और ग्राहक विवरण","notes"],
+["17","Photo Wire Blueprint","फोटो पर A-B रूट मापें","blueprint"]
+];
+$("toolGrid").innerHTML=tools.map(t=>`<div class="card" onclick="openTool('${t[3]}')"><b>${t[0]}. ${t[1]}</b><span>${t[2]}</span></div>`).join("");
+let calcExpr="0",lastEstimate=null,photo=null,route=[],scalePts=[],scaleMeters=1,cameraStream=null;
+function goHome(){stopCamera();$("work").classList.add("hidden");$("home").classList.remove("hidden");window.scrollTo(0,0)}
+function openTool(key){
+ stopCamera();$("home").classList.add("hidden");$("work").classList.remove("hidden");
+ const area=$("toolArea");area.innerHTML="";
+ const views={calc:calcUI,math:mathUI,ohm:ohmUI,power:powerUI,res:resUI,estimate:estimateUI,bill:billUI,camera:cameraUI,wire:wireUI,convert:convertUI,color:colorUI,transformer:transformerUI,energy:energyUI,formula:formulaUI,safety:safetyUI,notes:notesUI,blueprint:blueprintUI};
+ if(!views[key]){area.innerHTML="<div class='panel'>यह टूल उपलब्ध नहीं है।</div>";return}
+ views[key]();window.scrollTo(0,0)
+}
+function shell(title,desc,html){$("toolArea").innerHTML=`<div class="panel"><h2>${title}</h2><p>${desc||""}</p>${html}</div>`}
+function field(id,label,value="",type="number"){return `<label for="${id}">${label}</label><input id="${id}" type="${type}" value="${esc(value)}">`}
+function result(id="out"){return `<div class="result" id="${id}">परिणाम यहाँ दिखाई देगा।</div>`}
+function action(label,fn,secondary=false){return `<button class="full ${secondary?"secondary":""}" onclick="${fn}">${label}</button>`}
+function show(id,text){$(id).textContent=text}
+function calcUI(){
+ calcExpr="0";
+ shell("फोन कैलकुलेटर","बटन दबाकर गणना करें।",`<div id="calcDisplay" class="display">0</div><div class="keypad">${["AC","⌫","%","÷","7","8","9","×","4","5","6","−","1","2","3","+","±","0",".","="].map(k=>`<button class="${["÷","×","−","+","="].includes(k)?"op":""}" onclick="calcKey('${k}')">${k}</button>`).join("")}</div>`);
+}
+function calcKey(k){
+ let d=$("calcDisplay");
+ if(k==="AC")calcExpr="0";
+ else if(k==="⌫")calcExpr=calcExpr.length>1?calcExpr.slice(0,-1):"0";
+ else if(k==="="){try{let e=calcExpr.replace(/×/g,"*").replace(/÷/g,"/").replace(/−/g,"-");if(!/^[0-9+\-*/%.() ]+$/.test(e))throw Error();let r=Function('"use strict";return ('+e+')')();if(!Number.isFinite(r))throw Error();calcExpr=String(r)}catch{calcExpr="Error"}}
+ else if(k==="±")calcExpr=calcExpr.startsWith("-")?calcExpr.slice(1):"-"+calcExpr;
+ else calcExpr=calcExpr==="0"&&![".","%","+","−","×","÷"].includes(k)?k:calcExpr+k;
+ d.textContent=calcExpr;
+}
+function mathUI(){shell("मैथमेटिकल कैलकुलेटर","sin/cos/tan डिग्री में हैं। उदाहरण: sin(30)+sqrt(25)",`${field("expr","Expression","sin(30)+sqrt(25)","text")}<p class="small">उपलब्ध: sin, cos, tan, asin, acos, atan, sqrt, log, ln, abs, pi, e, ^ (power)</p>${action("Calculate","mathCalc()")}${result()}`)}
+function mathCalc(){
+ let s=$("expr").value.toLowerCase().replace(/\s+/g,"").replace(/\^/g,"**");
+ const names=["sin","cos","tan","asin","acos","atan","sqrt","log","ln","abs"];
+ for(const n of names)s=s.replace(new RegExp("\\b"+n+"\\(","g"),"Math."+n+"(");
+ s=s.replace(/Math\.sin\(/g,"Math.sin(Math.PI/180*").replace(/Math\.cos\(/g,"Math.cos(Math.PI/180*").replace(/Math\.tan\(/g,"Math.tan(Math.PI/180*");
+ s=s.replace(/\bpi\b/g,"Math.PI").replace(/\be\b/g,"Math.E").replace(/Math\.ln\(/g,"Math.log(");
+ if(!/^[0-9+\-*/().,%A-Za-z*]+$/.test(s)){show("out","Expression सही नहीं है।");return}
+ try{let v=Function('"use strict";return ('+s+')')();show("out",Number.isFinite(v)?fmt(v):"मान्य परिणाम नहीं मिला।")}catch{show("out","Expression जाँचें। उदाहरण: sin(30)+sqrt(25)")}
+}
+function ohmUI(){shell("Ohm's Law","दो मान भरें और तीसरा निकालें।",`${field("ov","Voltage V","","number")}${field("oi","Current I","","number")}${field("orr","Resistance R","","number")}${action("खाली मान निकालें","ohmCalc()")}${result()}`)}
+function ohmCalc(){let v=num("ov"),i=num("oi"),r=num("orr"),n=[["ov",v],["oi",i],["orr",r]].filter(x=>$(x[0]).value.trim()!=="");if(n.length!==2){show("out","ठीक दो मान भरें।");return}if(n.some(x=>x[1]<0)){show("out","मान ऋणात्मक नहीं होना चाहिए।");return}if($("ov").value===""){if(r===0){show("out","Resistance शून्य नहीं हो सकता।");return}show("out","Voltage = "+fmt(i*r)+" V")}else if($("oi").value===""){if(r===0){show("out","Resistance शून्य नहीं हो सकता।");return}show("out","Current = "+fmt(v/r)+" A")}else{if(i===0){show("out","Current शून्य है; R = V/I से गणना संभव नहीं।");return}show("out","Resistance = "+fmt(v/i)+" Ω")}}
+function powerUI(){shell("Power Calculator","V और I भरें या P और V भरें।",`${field("pv","Voltage (V)","230")}${field("pii","Current (A)","1")}${field("pp","Power (W)","")}${field("pr","Resistance (Ω)","")}${action("Calculate","powerCalc()")}${result()}`)}
+function powerCalc(){let v=num("pv"),i=num("pii"),p=num("pp"),r=num("pr"),filled=["pv","pii","pp","pr"].filter(id=>$(id).value.trim()!=="");if(filled.length<2){show("out","कम से कम दो मान भरें।");return}if(v<0||i<0||p<0||r<0){show("out","मान ऋणात्मक नहीं होने चाहिए।");return}let s=[];if(v&&i){s.push("P = VI = "+fmt(v*i)+" W");if(i)s.push("R = V/I = "+fmt(v/i)+" Ω")}if(v&&r){s.push("P = V²/R = "+fmt(v*v/r)+" W")}if(i&&r){s.push("P = I²R = "+fmt(i*i*r)+" W")}if(p&&v){s.push("I = P/V = "+(v?fmt(p/v):"undefined")+" A")}show("out",s.join("\n")||"इन मानों से सीधी गणना नहीं हो सकी।")}
+function resUI(){shell("Series / Parallel Resistance","कॉमा लगाकर resistor values भरें।",`${field("rv","Resistance values (Ω)","10,20,30","text")}<div class="row"><button onclick="resCalc('s')">Series</button><button class="secondary" onclick="resCalc('p')">Parallel</button></div>${result()}`)}
+function resCalc(mode){let a=$("rv").value.split(",").map(Number);if(a.length<1||a.some(x=>!Number.isFinite(x)||x<=0)){show("out","हर resistance शून्य से बड़ा नंबर होना चाहिए।");return}let r=mode==="s"?a.reduce((x,y)=>x+y,0):1/a.reduce((x,y)=>x+1/y,0);show("out",(mode==="s"?"Series":"Parallel")+" Equivalent Resistance = "+fmt(r)+" Ω")}
+function estimateUI(){shell("Material Estimate","मात्रा, दर, लेबर और टैक्स भरें।",`${field("em","Material / Item","Wire","text")}${field("eq","Quantity","10")}${field("er","Rate per unit (₹)","18")}${field("el","Labour charges (₹)","0")}${field("et","Tax (%)","0")}${action("Estimate निकालें","estimateCalc()")}${action("बिल में भेजें","estimateToBill()",true)}${result()}`)}
+function estimateCalc(){let q=num("eq"),r=num("er"),l=num("el"),t=num("et");if(q<0||r<0||l<0||t<0||t>100){show("out","मात्रा/रेट/लेबर सही भरें; टैक्स 0–100% रखें।");return}let sub=q*r,tax=(sub+l)*t/100;lastEstimate={item:$("em").value||"Electrical material",qty:q,rate:r,labour:l,taxPercent:t,subtotal:sub,tax,total:sub+l+tax};show("out",`सामान: ${lastEstimate.item}\nमात्रा: ${fmt(q)}\nसामान लागत: ₹${fmt(sub)}\nलेबर: ₹${fmt(l)}\nटैक्स: ₹${fmt(tax)}\nकुल अनुमान: ₹${fmt(lastEstimate.total)}`)}
+function estimateToBill(){if(!lastEstimate){estimateCalc();if(!lastEstimate)return}openTool("bill")}
+function billUI(){let e=lastEstimate||{item:"Electrical work",qty:1,rate:0,labour:0,taxPercent:0,subtotal:0,tax:0,total:0};shell("Bill & Quotation","ग्राहक विवरण भरें। फिर बिल अपडेट और प्रिंट करें।",`<div class="no-print">${field("bc","ग्राहक का नाम","","text")}${field("ba","साइट / पता","","text")}${field("bd","काम का विवरण",e.item,"text")}${field("bq","मात्रा",e.qty)}${field("br","रेट (₹)",e.rate)}${field("bl","लेबर (₹)",e.labour)}${field("bt","टैक्स (%)",e.taxPercent)}${action("बिल अपडेट करें","renderBill()")}${action("Print / Save as PDF","window.print()",true)}</div><div id="billOutput" class="bill"></div>`);renderBill()}
+function renderBill(){let q=num("bq"),r=num("br"),l=num("bl"),t=num("bt");if(q<0||r<0||l<0||t<0||t>100){alert("मात्रा, रेट, लेबर और टैक्स सही भरें।");return}let sub=q*r,tax=(sub+l)*t/100,total=sub+l+tax;$("billOutput").innerHTML=`<h2>AR GROUP OF INDUSTRIES</h2><p>ELECTRICAL CALCULATOR</p><hr><h3>BILL / QUOTATION</h3><p><b>ग्राहक:</b> ${esc($("bc").value)}</p><p><b>साइट / पता:</b> ${esc($("ba").value)}</p><p><b>विवरण:</b> ${esc($("bd").value)}</p><table><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr><tr><td>${esc($("bd").value)}</td><td>${fmt(q)}</td><td>₹${fmt(r)}</td><td>₹${fmt(sub)}</td></tr></table><p>सामान लागत: ₹${fmt(sub)}</p><p>लेबर: ₹${fmt(l)}</p><p>टैक्स (${fmt(t)}%): ₹${fmt(tax)}</p><h3>कुल: ₹${fmt(total)}</h3><p>ग्राहक की स्वीकृति: __________________</p><p>धन्यवाद!</p>`}
+function cameraUI(){shell("Live Camera","यदि कैमरा नहीं खुलता तो साइट फोटो चुनें।",`<video id="cam" autoplay playsinline class="full"></video><div class="row"><button onclick="startCamera()">कैमरा चालू</button><button class="secondary" onclick="takePhoto()">फोटो लें</button></div><label>या फोटो चुनें</label><input type="file" accept="image/*" capture="environment" onchange="loadPhoto(this,'camPhoto')"><img id="camPhoto" class="full" alt="चुनी गई फोटो">${action("Photo Wire Blueprint खोलें","openTool('blueprint')",true)}${result()}`)}
+async function startCamera(){try{stopCamera();cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false});$("cam").srcObject=cameraStream;show("out","कैमरा चालू है।")}catch(e){show("out","कैमरा उपलब्ध नहीं हुआ। फोटो चुनने का विकल्प इस्तेमाल करें।")}}
+function stopCamera(){if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null}}
+function takePhoto(){let v=$("cam");if(!v||!v.videoWidth){show("out","पहले कैमरा चालू करें।");return}let c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0);photo=c.toDataURL("image/jpeg",.9);if($("camPhoto"))$("camPhoto").src=photo;show("out","फोटो ली गई। Blueprint टूल में A-B रूट चुनें।")}
+function loadPhoto(input,target){let f=input.files&&input.files[0];if(!f)return;if(!f.type.startsWith("image/")){alert("कृपया image file चुनें।");return}let rd=new FileReader();rd.onload=()=>{photo=rd.result;let img=$(target);if(img)img.src=photo;if($("bpPhoto"))drawBlueprint()};rd.readAsDataURL(f)}
+function wireUI(){shell("Wire Helper","वायर की लंबाई और रेट से अनुमान निकालें।",`${field("wlen","वायर की लंबाई (मीटर)","20")}${field("wrate","रेट प्रति मीटर (₹)","18")}${field("wextra","अतिरिक्त / लेबर (₹)","0")}${action("वायर लागत निकालें","wireCalc()")}${action("बिल में भेजें","wireToBill()",true)}${result()}`)}
+function wireCalc(){let len=num("wlen"),rate=num("wrate"),extra=num("wextra");if(len<0||rate<0||extra<0){show("out","मान शून्य या उससे अधिक रखें।");return}lastEstimate={item:"Wire",qty:len,rate,labour:extra,taxPercent:0,subtotal:len*rate,tax:0,total:len*rate+extra};show("out",`वायर लागत: ₹${fmt(len*rate)}\nअतिरिक्त/लेबर: ₹${fmt(extra)}\nकुल: ₹${fmt(lastEstimate.total)}`)}
+function wireToBill(){wireCalc();openTool("bill")}
+function convertUI(){shell("Unit Converter","लंबाई, पावर और ऊर्जा की इकाइयाँ बदलें।",`<label>Category</label><select id="ct"><option value="length">Length</option><option value="power">Power</option><option value="energy">Energy</option></select>${field("cv","Value","1")}${field("cu","From unit","m","text")}${field("cto","To unit","ft","text")}${action("Convert","convertCalc()")}${result()}`)}
+function convertCalc(){let cat=$("ct").value,v=num("cv");let maps={length:{m:1,cm:.01,mm:.001,km:1000,ft:.3048,in:.0254},power:{w:1,kw:1000,hp:745.7},energy:{wh:1,kwh:1000,j:1/3600}};let m=maps[cat],a=$("cu").value.trim().toLowerCase(),b=$("cto").value.trim().toLowerCase();if(!(a in m)||!(b in m)){show("out","इस category के लिए unit नाम सही लिखें: "+Object.keys(m).join(", "));return}show("out",fmt(v*m[a]/m[b])+" "+b)}
+function colorUI(){shell("Resistor Color Code","4-band resistor: पहले दो अंक, तीसरा multiplier, चौथा tolerance।",`<label>Band 1</label><select id="c1"></select><label>Band 2</label><select id="c2"></select><label>Multiplier</label><select id="cm"></select><label>Tolerance</label><select id="ctol"></select>${action("Resistance निकालें","colorCalc()")}${result()}`);let colors=[["Black",0],["Brown",1],["Red",2],["Orange",3],["Yellow",4],["Green",5],["Blue",6],["Violet",7],["Grey",8],["White",9]];for(let id of ["c1","c2"]){$(id).innerHTML=colors.filter(x=>id!=="c1"||x[1]>0).map(x=>`<option value="${x[1]}">${x[0]}</option>`).join("")} $("cm").innerHTML=colors.map(x=>`<option value="${Math.pow(10,x[1])}">${x[0]} × ${Math.pow(10,x[1])}</option>`).join("")+`<option value="0.1">Gold ×0.1</option><option value="0.01">Silver ×0.01</option>`;$("ctol").innerHTML=`<option value="1">Brown ±1%</option><option value="2">Red ±2%</option><option value="5">Gold ±5%</option><option value="10">Silver ±10%</option>`}
+function colorCalc(){show("out",fmt((Number($("c1").value)*10+Number($("c2").value))*Number($("cm").value))+" Ω ±"+$("ctol").value+"%")}
+function transformerUI(){shell("Transformer Helper","Ideal transformer ratio: Vp/Vs = Np/Ns",`${field("vp","Primary Voltage (V)","230")}${field("vs","Secondary Voltage (V)","12")}${field("np","Primary Turns (optional)","")}${field("ns","Secondary Turns (optional)","")}${action("Turns Ratio निकालें","transformerCalc()")}${result()}`)}
+function transformerCalc(){let vp=num("vp"),vs=num("vs"),np=num("np"),ns=num("ns");if(vp<=0||vs<=0){show("out","दोनों voltages शून्य से अधिक रखें।");return}show("out",`Voltage ratio Vp/Vs = ${fmt(vp/vs)}\nआवश्यक ideal turns ratio Np/Ns = ${fmt(vp/vs)}${np>0?"\nदिए turns के अनुसार Ns = "+fmt(np*vs/vp):""}${ns>0?"\nदिए turns के अनुसार Np = "+fmt(ns*vp/vs):""}\nनोट: वास्तविक transformer losses और safety limits अलग हो सकते हैं।`)}
+function energyUI(){shell("Energy Calculator","Energy (kWh) = Power (kW) × Hours",`${field("ep","Load Power (W)","1000")}${field("eh","Use (hours)","5")}${field("ek","Rate per unit (₹)","7")}${action("Energy और Cost निकालें","energyCalc()")}${result()}`)}
+function energyCalc(){let p=num("ep"),h=num("eh"),r=num("ek");if(p<0||h<0||r<0){show("out","मान ऋणात्मक न रखें।");return}let k=p*h/1000;show("out",`Energy = ${fmt(k)} kWh (units)\nEstimated cost = ₹${fmt(k*r)}\nयह अनुमान है; वास्तविक बिल में अन्य शुल्क हो सकते हैं।`)}
+function formulaUI(){shell("Electrical Formulas","मुख्य formula reference",`<div class="result">Ohm's Law: V = I × R\nCurrent: I = V / R\nResistance: R = V / I\nPower: P = V × I\nPower: P = I² × R\nPower: P = V² / R\nSeries: Rt = R1 + R2 + ...\nParallel: 1/Rt = 1/R1 + 1/R2 + ...\nEnergy: E = P × t\nTransformer ideal ratio: Vp/Vs = Np/Ns\nAC single-phase real power: P = V × I × power factor\nThree-phase real power: P = √3 × VL × IL × power factor</div><p class="small">फॉर्मूले सही unit और परिस्थितियों के साथ इस्तेमाल करें।</p>`)}
+function safetyUI(){let items=["काम शुरू करने से पहले supply isolate करें","Lockout/tagout प्रक्रिया लागू करें","Approved tester से dead होने की पुष्टि करें","उचित PPE पहनें","सही rating का fuse/MCB चुनें","Earthing और connections की जाँच करें","गीले हाथों से electrical equipment न छुएँ","काम के बाद cover और area सुरक्षित करें"];shell("Safety Checklist","काम शुरू करने से पहले सभी बिंदु जाँचें।",items.map((x,i)=>`<label><input type="checkbox" id="safe${i}" style="width:auto;margin-right:9px">${x}</label>`).join("")+action("Checklist स्थिति","safetyCheck()")+result())}
+function safetyCheck(){let n=8,done=0;for(let i=0;i<n;i++)if($("safe"+i).checked)done++;show("out",done+" / "+n+" checks पूरे। सभी आवश्यक सुरक्षा जाँच के बिना काम शुरू न करें।")}
+function notesUI(){shell("Customer Notes","अपने नोट लिखें; डिवाइस में डाउनलोड करें।",`${field("ntitle","शीर्षक","","text")}<label>Notes</label><textarea id="ntxt" rows="7" placeholder="ग्राहक, साइट, काम और बाकी जानकारी..."></textarea>${action("नोट डाउनलोड करें","downloadNotes()")}`)}
+function downloadNotes(){let s=($("ntitle").value||"Electrical Notes")+"\n\n"+$("ntxt").value;let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([s],{type:"text/plain;charset=utf-8"}));a.download="electrical-notes.txt";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function blueprintUI(){route=[];scalePts=[];shell("Photo Wire Blueprint","1. साइट फोटो चुनें। 2. ज्ञात दूरी के दो scale points चुनें। 3. A और B तथा बीच के route points टैप करें।",`<input type="file" accept="image/*" capture="environment" onchange="loadPhoto(this,'bpPhoto')"><img id="bpPhoto" class="hidden" alt="Site photo"><canvas id="routeCanvas" width="800" height="450"></canvas><div class="row"><button onclick="bpMode='scale1'">Scale point 1</button><button class="secondary" onclick="bpMode='scale2'">Scale point 2</button><button onclick="bpMode='A'">A Point</button><button class="secondary" onclick="bpMode='B'">B / Route point</button></div>${field("knownDistance","दो scale points के बीच ज्ञात दूरी (मीटर)","2")}${action("Scale सेट करें","setScale()")}${action("Route लंबाई निकालें","measureRoute()")}${action("Blueprint Image डाउनलोड","downloadBlueprint()",true)}${result()}`);
+ $("bpPhoto").onload=()=>{drawBlueprint()};
+ $("routeCanvas").onclick=canvasTap;
+ if(photo){$("bpPhoto").src=photo;$("bpPhoto").classList.remove("hidden")}drawBlueprint();
+}
+let bpMode="A",imgObj=null;
+function drawBlueprint(){let c=$("routeCanvas");if(!c)return;let ctx=c.getContext("2d");ctx.clearRect(0,0,c.width,c.height);if(photo){imgObj=new Image();imgObj.onload=()=>{ctx.clearRect(0,0,c.width,c.height);let s=Math.min(c.width/imgObj.width,c.height/imgObj.height),w=imgObj.width*s,h=imgObj.height*s;ctx.drawImage(imgObj,(c.width-w)/2,(c.height-h)/2,w,h);drawMarks(ctx)};imgObj.src=photo}else{ctx.fillStyle="#f4fbf6";ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle="#244532";ctx.font="24px Arial";ctx.fillText("पहले साइट फोटो चुनें",25,50)}}
+function drawMarks(ctx){if(scalePts.length===2){ctx.strokeStyle="#ffd166";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(scalePts[0].x,scalePts[0].y);ctx.lineTo(scalePts[1].x,scalePts[1].y);ctx.stroke()}let all=[...route];all.forEach((p,i)=>{ctx.fillStyle=p.label==="A"?"#00a65a":p.label==="B"?"#e11d48":"#1877d2";ctx.beginPath();ctx.arc(p.x,p.y,9,0,Math.PI*2);ctx.fill();ctx.fillStyle="#fff";ctx.font="18px Arial";ctx.fillText(p.label,p.x+9,p.y-9)});if(route.length>1){ctx.strokeStyle="#00b989";ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(route[0].x,route[0].y);route.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.stroke()}}
+function canvasTap(e){let c=$("routeCanvas"),r=c.getBoundingClientRect(),x=(e.clientX-r.left)*c.width/r.width,y=(e.clientY-r.top)*c.height/r.height;if(bpMode==="scale1"){scalePts=[{x,y}]}else if(bpMode==="scale2"){if(scalePts.length===0){alert("पहले Scale point 1 चुनें।");return}scalePts.push({x,y});scalePts=scalePts.slice(-2)}else{let label=bpMode==="A"?"A":route.length===0?"A":bpMode==="B"?"B":"P"+(route.length+1);route.push({x,y,label});bpMode="B"}drawBlueprint()}
+function setScale(){scaleMeters=num("knownDistance");if(scaleMeters<=0||scalePts.length!==2){show("out","दो scale points चुनें और ज्ञात दूरी शून्य से अधिक भरें।");return}show("out","Scale set: चुने गए दोनों points = "+fmt(scaleMeters)+" m")}
+function measureRoute(){if(!photo){show("out","पहले साइट फोटो चुनें।");return}if(route.length<2||scalePts.length!==2||scaleMeters<=0){show("out","दो scale points, ज्ञात दूरी, और route के कम से कम दो points चुनें।");return}let dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),pixels=dist(scalePts[0],scalePts[1]);if(!pixels){show("out","Scale points अलग-अलग चुनें।");return}let total=0;for(let i=1;i<route.length;i++)total+=dist(route[i-1],route[i]);let meters=total/pixels*scaleMeters;lastEstimate={item:"Wire route",qty:meters,rate:0,labour:0,taxPercent:0,subtotal:0,tax:0,total:0};show("out",`अनुमानित route length: ${fmt(meters)} m\nScale distance: ${fmt(scaleMeters)} m\nयह 2D photo estimate है; perspective और photo angle से त्रुटि हो सकती है।`)}
+function downloadBlueprint(){let c=$("routeCanvas");if(!c||!photo){show("out","पहले फोटो चुनें।");return}let a=document.createElement("a");a.download="electrical-blueprint.png";a.href=c.toDataURL("image/png");a.click()}
+openTool("calc");
+</script>
+</body>
+</html>
